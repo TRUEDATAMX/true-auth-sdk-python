@@ -8,23 +8,30 @@ ALGORITHM = "HS256"
 
 class TrueAuth:
 
-    def __init__(self) -> None:
-        try:
-            shared_secret = os.environ['TRUE_SHARED_SECRET']
-        except Exception as e:
-            print("No shared secret was found. Unable to sign tokens.")
-            shared_secret = None
-        try:
-            endpoint = os.environ['TRUE_AUTHENTICATION_ENDPOINT']
-        except Exception as e:
-            endpoint = None
-            print("No registered authentication endpoint found. Unable to validate tokens.")
+    def __init__(self, shared_secret=None, endpoint=None, service_name=None) -> None:
+        # shared_secret: use provided value or fall back to env var
+        if shared_secret is None:
+            try:
+                shared_secret = os.environ['TRUE_SHARED_SECRET']
+            except Exception as e:
+                print("No shared secret was found. Unable to sign tokens.")
+                shared_secret = None
         
-        try:
-            service_name = os.environ['TRUE_SERVICE_NAME']
-        except Exception as e:
-            print(e)
-            raise RuntimeError("Must declare service name.", e)
+        # endpoint: use provided value or fall back to env var
+        if endpoint is None:
+            try:
+                endpoint = os.environ['TRUE_AUTHENTICATION_ENDPOINT']
+            except Exception as e:
+                endpoint = None
+                print("No registered authentication endpoint found. Unable to validate tokens.")
+        
+        # service_name: use provided value or fall back to env var
+        if service_name is None:
+            try:
+                service_name = os.environ['TRUE_SERVICE_NAME']
+            except Exception as e:
+                print(e)
+                raise RuntimeError("Must declare service name.", e)
 
         self.shared_secret_ = shared_secret
         self.endpoint_ = endpoint
