@@ -16,7 +16,7 @@ TrueAuth is a Python library for generating and validating JSON Web Tokens (JWT)
 To use this library, you need to have Python 3.x and the required dependencies installed. Install dependencies using `pip`:
 
 ```bash
-pip install pyjwt requests
+pip install pyjwt requests httpx
 ```
 
 ---
@@ -57,12 +57,21 @@ print(f"Generated Token: {token}")
 
 ### Validating a Token
 
-To validate a token, use the `validate` method:
+To validate a token, use the `validate` method. It returns the endpoint's response when the token is valid and `False` when the endpoint rejects it (400 or 401):
 
 ```python
-is_valid = auth.validate(token)
-print(f"Validation Result: {is_valid}")
+result = auth.validate(token)
+if not result:
+    ...  # reject the request
 ```
+
+In async code (FastAPI, Starlette middlewares), use `validate_async`, which makes the same call with `httpx` and doesn't block the event loop:
+
+```python
+result = await auth.validate_async(token)
+```
+
+Both methods remember a token that passed until its `exp` claim (60 seconds if it has none), so a caller that sends the same token on every request only triggers one call to the endpoint. Rejected tokens are never cached. Any other status from the endpoint raises an exception, and a network error returns `None`.
 
 ### Validating Custom Headers
 
@@ -81,7 +90,7 @@ print(f"Header Validation Result: {validation_result}")
 
 ## Error Handling
 
-The library raises `RuntimeError` for critical configuration errors, such as missing shared secrets or service names. HTTP errors during validation are also reported with descriptive messages.
+The library raises `RuntimeError` for critical configuration errors, such as missing shared secrets or service names. Validation returns `False` for a token the endpoint rejects (400 or 401), raises for any other unexpected status and returns `None` when the endpoint can't be reached.
 
 ---
 
@@ -112,6 +121,16 @@ The library raises `RuntimeError` for critical configuration errors, such as mis
 
 - **[PyJWT](https://pyjwt.readthedocs.io/)**: For JWT generation and decoding.
 - **[Requests](https://docs.python-requests.org/)**: For making HTTP requests.
+- **[HTTPX](https://www.python-httpx.org/)**: For the async validation call.
+
+---
+
+## Tests
+
+```bash
+pip install -r requirements.txt pytest
+pytest
+```
 
 ---
 
