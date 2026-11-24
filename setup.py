@@ -16,5 +16,5 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    python_requires=">=3.6",  # Minimum Python version
+    python_requires=">=3.9",  # PyJWT 2.10 and httpx need 3.9 or newer
 )
