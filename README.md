@@ -13,10 +13,10 @@ TrueAuth is a Python library for generating and validating JSON Web Tokens (JWT)
 
 ## Installation
 
-To use this library, you need to have Python 3.x and the required dependencies installed. Install dependencies using `pip`:
+To use this library, you need Python 3.9 or newer and the required dependencies installed. Install dependencies using `pip`:
 
 ```bash
-pip install pyjwt requests
+pip install pyjwt requests httpx
 ```
 
 ---
@@ -57,11 +57,45 @@ print(f"Generated Token: {token}")
 
 ### Validating a Token
 
-To validate a token, use the `validate` method:
+To validate a token, use the `validate` method. It returns the endpoint's response when the token is valid and `False` when the endpoint rejects it (400 or 401):
 
 ```python
-is_valid = auth.validate(token)
-print(f"Validation Result: {is_valid}")
+result = auth.validate(token)
+if not result:
+    ...  # reject the request
+```
+
+In async code (FastAPI, Starlette middlewares), use `validate_async`, which makes the same call with `httpx` and doesn't block the event loop:
+
+```python
+result = await auth.validate_async(token)
+```
+
+Both methods remember a token that passed until its `exp` claim, for 5 minutes at most (60 seconds if it has no `exp`), so a caller that sends the same token on every request only triggers one call to the endpoint now and then. The cache is kept per endpoint and service name, rejected tokens are never cached and each call gets its own copy of the result.
+
+The two methods differ when the endpoint can't give an answer. `validate_async` raises `TrueAuthUnavailable` when the endpoint is unreachable, times out, answers an unexpected status or sends a 200 without JSON, so an async caller can answer 503 for an outage and 401 for a rejected token:
+
+```python
+from trueauth.TrueAuth import TrueAuthUnavailable
+
+try:
+    result = await auth.validate_async(token)
+except TrueAuthUnavailable:
+    ...  # answer 503
+if not result:
+    ...  # answer 401
+```
+
+`validate` keeps its earlier behavior for those cases: it returns `None` when the endpoint can't be reached or sends a 200 without JSON, and raises `TrueAuthUnavailable` (an `Exception`) for any other unexpected status.
+
+### Upgrading from 0.1
+
+In 0.1, `validate` raised an exception when the endpoint rejected a token. It now returns `False`, so code that treats "no exception" as a valid token lets rejected tokens through. Check the result instead:
+
+```python
+result = auth.validate(token)
+if not result:  # False for a rejected token, None when the endpoint can't be reached
+    raise PermissionError("Invalid token")
 ```
 
 ### Validating Custom Headers
@@ -81,7 +115,7 @@ print(f"Header Validation Result: {validation_result}")
 
 ## Error Handling
 
-The library raises `RuntimeError` for critical configuration errors, such as missing shared secrets or service names. HTTP errors during validation are also reported with descriptive messages.
+The library raises `RuntimeError` for critical configuration errors, such as missing shared secrets or service names. Validation returns `False` for a token the endpoint rejects (400 or 401). When the endpoint can't give an answer, `validate_async` raises `TrueAuthUnavailable` and `validate` returns `None` (or raises `TrueAuthUnavailable` for an unexpected status).
 
 ---
 
@@ -112,6 +146,16 @@ The library raises `RuntimeError` for critical configuration errors, such as mis
 
 - **[PyJWT](https://pyjwt.readthedocs.io/)**: For JWT generation and decoding.
 - **[Requests](https://docs.python-requests.org/)**: For making HTTP requests.
+- **[HTTPX](https://www.python-httpx.org/)**: For the async validation call.
+
+---
+
+## Tests
+
+```bash
+pip install -r requirements.txt pytest
+pytest
+```
 
 ---
 

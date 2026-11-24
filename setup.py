@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="trueauth",
-    version="0.1.0",
+    version="0.2.0",
     author="TRUE Data Science & Engineering",
     author_email="luis@truedata.com.mx",
     description="Authentication SDK",
@@ -16,5 +16,5 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    python_requires=">=3.6",  # Minimum Python version
+    python_requires=">=3.9",  # PyJWT 2.10 and httpx need 3.9 or newer
 )
